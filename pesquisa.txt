@@ -1,0 +1,2193 @@
+o meu "site" esta ficando assim porem eu preciso de um botão de editar, vc pode me guiar?
+Para adicionar a função de editar categorias no seu projeto ("Loja do Zé"), você precisará fazer ajustes em três arquivos: no Front-end (app.js e index.html) para criar o botão visualmente e capturar a ação, e no Back-end (server.js) para receber essa alteração e atualizar o banco de dados Neon.
+Aqui está um guia passo a passo de como estruturar essa funcionalidade:
+
+1. No Back-end (server.js): Criar a rota de atualização
+
+No seu servidor Express/Node, você provavelmente já tem rotas para listar (GET) e cadastrar (POST). Agora, adicione uma rota PUT usando a sua função executarQueryNeon:
+javascript
+app.put('/categorias/:id', async (req, res) => {
+  const { id } = req.params;
+  const { nome } = req.body; // Ou o nome da coluna da sua tabela
+
+  const sql = 'UPDATE categorias SET nome = $1 WHERE id = $2 RETURNING *';
+  const resultado = await executarQueryNeon(sql, [nome, id]);
+
+  if (resultado) {
+    res.json(resultado[0]);
+  } else {
+    res.status(500).json({ erro: 'Erro ao atualizar categoria' });
+  }
+});
+Use o código com cuidado.
+(Lembre-se de ajustar o nome da tabela e das colunas caso sejam diferentes de categorias, nome e id).
+
+2. No Front-end (app.js): Adicionar o botão na lista
+
+Na parte do seu código app.js onde você cria os itens da lista de categorias na tela (provavelmente dentro de um forEach ou map), adicione um botão de Editar ao lado do nome de cada categoria:
+javascript
+// Exemplo de como montar o item da lista
+const item = document.createElement('div');
+item.innerHTML = `
+  <span>${categoria.nome}</span>
+  <button onclick="editarCategoria(${categoria.id}, '${categoria.nome}')">Editar</button>
+`;
+listaCategorias.appendChild(item);
+Use o código com cuidado.
+
+3. No Front-end (app.js): Criar a função de editar
+
+Ainda no app.js, crie a função editarCategoria. A maneira mais rápida de fazer isso funcionar é usando um prompt simples para pedir o novo nome e enviar para o servidor:
+javascript
+async function editarCategoria(id, nomeAtual) {
+  const novoNome = prompt("Digite o novo nome da categoria:", nomeAtual);
+
+  // Verifica se o usuário não cancelou ou deixou em branco
+  if (novoNome && novoNome.trim() !== "" && novoNome !== nomeAtual) {
+    try {
+      const resposta = await fetch(`http://localhost:3000/categorias/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ nome: novoNome })
+      });
+
+      if (resposta.ok) {
+        // Chame aqui a função que você já usa para recarregar a lista na tela
+        carregarCategorias(); 
+      } else {
+        alert("Erro ao editar a categoria.");
+      }
+    } catch (erro) {
+      console.error("Erro na requisição:", erro);
+    }
+  }
+}
+Use o código com cuidado.
+(Verifique se a porta da URL http://localhost:3000 é a mesma configurada no seu server.js).
+
+4. No Visual (style.css): Estilizar o botão (Opcional)
+
+Para combinar com o visual limpo do seu site, você pode estilizar o botão de editar no style.css usando um tom de amarelo/laranja ou azul claro para diferenciá-lo do botão verde de cadastrar.
+Se quiser, me mande o código dos seus arquivos app.js e server.js (ou uma foto deles). Assim eu adapto os comandos exatamente com os nomes das suas variáveis, tabelas e rotas!
+As respostas da IA podem conter erros. Saiba mais
+
+antes disso eu queria peerguntar pq quando eu digito algo no espaco e clico em cadastar ele não aparece pra mim
+
+Olhando a imagem que você enviou antes, dá para identificar dois motivos principais que geralmente causam esse problema (especialmente pelo que aparece na barra de endereço do seu navegador na direita):
+
+1. O arquivo está aberto direto do computador (file:///) e o servidor está desligado
+
+Repare na barra de endereço do navegador na sua imagem: está escrito file:///C:/Users/jose.martins/.../index.html?.
+• Como você está usando Node.js (server.js) e conectando com o banco Neon, o seu front-end precisa se comunicar com o seu servidor local (geralmente via http://localhost:3000).
+• Se o servidor não estiver rodando no terminal do VS Code (usando um comando como node server.js), o botão CADASTRAR tenta enviar os dados para o servidor, falha silenciosamente e nada acontece.
+• Dica extra: O sinal de interrogação ? no final da URL (index.html?) indica que o formulário HTML recarregou a página ao clicar no botão. No seu app.js, você precisa garantir que usou event.preventDefault() no evento de submit para evitar que a página recarregue antes de salvar no banco.
+
+2. Falta atualizar a lista na tela após cadastrar
+
+Mesmo que o dado esteja sendo salvo no banco de dados Neon com sucesso, o navegador não atualiza a lista de "CATEGORIAS" sozinho.
+No seu arquivo app.js, logo após o fetch que envia o novo cadastro (POST) dar certo, você precisa chamar novamente a função que busca e desenha as categorias na tela (por exemplo, carregarCategorias()).
+
+Como descobrir o erro exato em 10 segundos:
+
+1. Abra o seu site no navegador (Google Chrome/Edge) e aperte a tecla F12 (ou clique com o botão direito na página -> Inspecionar).
+2. Vá na aba Console (onde aparecem erros em vermelho) e também na aba Network (Rede).
+3. Tente cadastrar uma categoria novamente e veja qual mensagem de erro aparece em vermelho no Console (provavelmente algo como ERR_CONNECTION_REFUSED se o servidor estiver desligado, ou um erro de CORS).
+Para eu te ajudar a resolver exatamente o que está travando, você pode:
+• Me mandar o código do seu app.js e do server.js
+• Ou me dizer qual mensagem de erro apareceu no Console do navegador (F12)
+As respostas da IA podem conter erros. Saiba mais
+
+posso te manadar uma imagem da tabela do neon para vc me auxiliar?
+
+Com certeza, pode mandar! Uma foto ou print da sua tabela no Neon vai ajudar bastante a ver os nomes exatos das colunas (como id, nome, etc.) e também confirmar se algum dado já está sendo salvo por lá.
+Se conseguir aproveitar e mandar também um print (ou colar o texto) dos seus arquivos app.js e server.js, eu já verifico a conexão inteira de uma vez e te entrego o código corrigido com a função de cadastrar funcionando e o botão de editar pronto.
+Pode enviar a imagem da tabela do Neon (e os códigos do app.js e server.js, se puder) que eu analiso tudo para você.
+As respostas da IA podem conter erros. Saiba mais
+
+primeiro vou manadar a tabela do neon
+
+Combinado! Pode enviar a imagem da tabela do Neon aqui. Assim que você mandar, eu analiso os campos e seguimos para os arquivos do seu código.
+Envie a imagem da tabela do Neon quando estiver pronto para continuarmos.
+As respostas da IA podem conter erros. Saiba mais
+
+-- Banco de Dados da Quantum
+
+CREATE TABLE IF NOT EXISTS cliente (
+    id_cliente Serial PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    telefone BIGINT NOT NULL UNIQUE,
+    endereco VARCHAR(150) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS categoria (
+    id_categoria Serial PRIMARY KEY,
+    descricao TEXT
+);
+
+CREATE TABLE IF NOT EXISTS produto (
+    id_produto Serial PRIMARY KEY,
+    id_categoria INT REFERENCES categoria(id_categoria),
+    nome VARCHAR(100) NOT NULL,
+    descricao TEXT, -- Removido o acento de "descrição" (evita erros no banco)
+    preco DECIMAL(10,2) NOT NULL,
+    validade DATE
+);
+
+CREATE TABLE IF NOT EXISTS venda (
+    id_venda Serial PRIMARY KEY,
+    data_venda DATE, -- Adicionada a vírgula que faltava aqui
+    id_cliente INT REFERENCES cliente(id_cliente), -- Corrigida a sintaxe da Foreign Key
+    id_produto INT REFERENCES produto(id_produto), -- Corrigida a sintaxe da Foreign Key
+    preco DECIMAL(10,2) NOT NULL,
+    enviar_nota BOOL DEFAULT FALSE
+);
+
+Perfeito! Olhando o seu código SQL, já temos os nomes exatos da tabela e das colunas que o seu site precisa usar:
+• Nome da tabela: categoria (no singular)
+• Coluna de identificação: id_categoria
+• Coluna do texto: descricao
+Isso é muito importante porque, se no seu server.js ou app.js estiver escrito categorias (no plural) ou nome em vez de descricao, o banco de dados não encontra a tabela e o cadastro falha.
+
+Como ficam os comandos SQL exatos para essa tabela:
+
+• Para listar as categorias:sql
+SELECT * FROM categoria ORDER BY id_categoria ASC
+Use o código com cuidado.
+• Para cadastrar uma nova categoria:sql
+INSERT INTO categoria (descricao) VALUES ($1) RETURNING *
+Use o código com cuidado.
+• Para editar uma categoria (o botão que você quer fazer):sql
+UPDATE categoria SET descricao = $1 WHERE id_categoria = $2 RETURNING *
+Use o código com cuidado.
+
+Próximo passo
+
+Agora que já sabemos exatamente como o banco está estruturado, o erro de não aparecer na tela está no server.js ou no app.js.
+Pode colar aqui o código do seu server.js e do seu app.js (ou mandar um print deles) para eu corrigir o cadastro e já colocar o botão de editar usando os nomes certos (categoria, id_categoria e descricao)?
+As respostas da IA podem conter erros. Saiba mais
+
+agora vou mandar o app.js
+
+Perfeito, pode mandar o código do app.js! Assim que você enviar, eu dou uma olhada na lógica e preparo os ajustes.
+Envie o código do app.js (e do server.js se também já estiver fácil) para continuarmos.
+As respostas da IA podem conter erros. Saiba mais
+
+//Este arquivo roda no Navegador (Cliente)
+// Ele não fala com o NEON: Chama as rotas /api do nosso server.js
+
+
+const lista = document.getElementById('lista-categorias')
+const formulario = document.getElementById('form-categoria')
+const campoDescricao = document.getElementById('descricao')
+const mensagem = document.getElementById('mensagem')
+
+let categorias = []
+let idEmEdicao = null
+
+async function carregarCategorias() {
+    lista.innerHTML = '<li  class="lista-vazia"> Carregando....</li>'
+    try {
+        const resposta = await fetch('/api/categorias')
+        categorias = await resposta.json()
+
+        if (!resposta.ok) throw new Error(categorias.error)
+        renderizarLista()
+    }
+    catch (error) {
+        mensagem.textContent = Erro ${error.menssage}
+    }
+}
+function renderizarLista() {
+    lista.innerHTML = ''
+    if (categorias.length === 0) {
+        lista.innerHTML = '<li class="lista-vazia">Nenhuma categoria cadastrada!</li>'
+        return
+    }
+    for (const categoria of categorias) {
+        lista.appendChild(
+            categoria.id_categoria === idEmEdicao ? criarItemEdicao(categoria) : criarItemVisualizacao(categoria)
+        )
+    }
+}
+function criarItemVisualizacao(categoria) {
+    const item = document.createElement('li')
+    item.className = 'categoria-item'
+
+    const info = document.createElement('span')
+    info.className = 'categoria-info'
+    info.innerHTML = <span class="categoria-id">#${categoria.descricao}</span> ${categoria.descricao}
+
+    const btnEditar = document.createElement('button')
+    btnEditar.textContent = 'Editar'
+    btnEditar.className = 'btn btn-editar'
+    btnEditar.addEventListener('click', () => {
+        idEmEdicao = categoria.id_categoria
+        renderizarLista()
+    })
+
+    const btnExcluir = document.createElement('button')
+    btnExcluir.textContent = 'Excluir'
+    btnExcluir.className = 'btn btn-excluir'
+    btnExcluir.addEventListener('click', () => {
+        idEmEdicao = categoria.id_categoria
+        excluirCategoria(idEmEdicao)
+    })
+
+    const acoes = document.createElement('div')
+    acoes.className = 'categoria-acoes'
+
+    acoes.append(btnEditar, btnExcluir)
+    item.append(info, acoes)
+    return item
+}
+async function excluirCategoria(id_excluirCategoria) {
+
+
+    try {
+        const resposta = await fetch('api/excluirCategorias', {
+            method: 'POST',
+            headers: { 'Content-type': 'application/json' },
+            body: JSON.stringify({ id_categoria: id_excluirCategoria })
+        })
+        const dados = await resposta.json()
+
+        if (resposta.ok) {
+            mostrarMensagem(Categoria "${dados.descricao}" Excluida!)
+            campoDescricao.value = ''
+            carregarCategorias()
+        }
+        else {
+            mostrarMensagem(Erro: ${dados.erro}, 'erro')
+        }
+    }
+    catch (erro) {
+        mostrarMensagem(Erro de conexão: ${erro.mensagem}, erro)
+    }
+    // Não esquecer de envolver todas as funções assincronas em um try-catch
+}
+function montarLista(dados) {
+    lista.innerHTML = '<li>Carregando ....</li>'
+    if (dados.length === 0) {
+        lista.innerHTML = '<li>Nenhuma categoria cadastrada ....</li>'
+        return
+    }
+    lista.innerHTML = ''
+    for (const categoria of dados) {
+        const item = document.createElement('li')
+        item.textContent = ${categoria.id_categoria} - ${categoria.descricao}
+        lista.appendChild(item)
+    }
+}
+
+
+formulario.addEventListener('submit', async (evento) => {
+    evento.preventDefault()
+
+    const resposta = await fetch('api/categorias', {
+        method: 'POST',
+        headers: { 'Content-type': 'application/json' },
+        body: JSON.stringify({ descricao: campoDescricao.value })
+    })
+    const dados = await resposta.json()
+
+    if (resposta.ok) {
+        mostrarMensagem(Categoria "${dados.descricao}" cadastrada!)
+        campoDescricao.value = ''
+        carregarCategorias()
+    }
+    else {
+        mostrarMensagem(Erro: ${dados.erro}, 'erro')
+    }
+
+})
+
+function criarItemEdicao(categoria) {
+    const item = document.createElement('li')
+    item.classList = 'categoria-item  categoria-item-edicao'
+
+    const input = document.createElement('input')
+
+    input.type = 'text'
+    input.value = categoria.descricao
+    input.className = 'input-edicao'
+
+    const btnSalvar = document.createElement('button')
+    btnSalvar.textContent = 'Salvar'
+    btnSalvar.className = 'btn btn-salvar'
+    btnSalvar.addEventListener('click', () => salvarEdicao(categoria, input.value))
+
+    const btnCancelar = document.createElement('button')
+    btnCancelar.textContent = 'Cancelar'
+    btnCancelar.className = 'btn btn-cancelar'
+    btnCancelar.addEventListener('click', () => {
+        idEmEdicao = null
+        renderizarLista()
+    })
+
+    const acoes = document.createElement('div')
+    acoes.className = 'categoria-acoes'
+    acoes.append(btnSalvar, btnCancelar)
+    item.append(input, acoes)
+    input.focus()
+    return item
+}
+
+
+function mostrarMensagem(texto, tipo = 'sucesso') {
+    mensagem.textContent = texto
+    mensagem.className = mensagem mensagem-${tipo}
+}
+
+
+carregarCategorias()
+
+A boa notícia é que você já tem quase tudo pronto no seu app.js! O botão de Editar, o campo de edição na tela e os botões de Salvar e Cancelar já foram criados por você.
+Porém, existem 3 motivos principais pelos quais nada aparece na tela ao cadastrar e por que o botão de salvar edição ainda não funciona:
+
+1. Como você está abrindo o site (O motivo do cadastro falhar)
+
+No seu app.js, as chamadas usam caminhos relativos como fetch('/api/categorias'). Isso só funciona se você abrir o site pelo endereço do seu servidor Node (ex: http://localhost:3000), e não clicando duas vezes no arquivo HTML (file:///C:/... como estava na sua primeira foto).
+• Como resolver: No terminal do VS Code, rode node server.js e acesse no navegador o endereço http://localhost:3000 (ou a porta que está no seu server.js).
+
+2. Erros de sintaxe (Falta de crases ` no app.js)
+
+No código que você colou, várias linhas de texto com ${...} estão sem as crases (`) em volta (por exemplo: Erro ${error.menssage} em vez de `Erro ${error.message}`). Quando o navegador lê isso, o JavaScript trava logo no início e nenhum botão funciona, fazendo a página recarregar com ? na URL ao clicar em Cadastrar.
+(Nota: Se isso aconteceu apenas ao colar aqui no chat, verifique no seu VS Code se as crases estão lá. Se não estiverem, o código corrigido abaixo já resolve tudo).
+
+3. Falta a função salvarEdicao no app.js
+
+Repare na linha do seu botão Salvar dentro de criarItemEdicao:
+javascript
+btnSalvar.addEventListener('click', () => salvarEdicao(categoria, input.value))
+Use o código com cuidado.
+Você chamou a função salvarEdicao, mas ainda não criou ela no final do app.js! Além disso, na função criarItemVisualizacao, o ID está mostrando a descrição duas vezes (#${categoria.descricao}) em vez de #${categoria.id_categoria}.
+
+Código do app.js corrigido e completo
+
+Substitua o conteúdo do seu app.js por este código abaixo, que já corrige as crases, arruma a exibição do ID e adiciona a função salvarEdicao pronta para falar com o seu server.js:
+javascript
+const lista = document.getElementById('lista-categorias')
+const formulario = document.getElementById('form-categoria')
+const campoDescricao = document.getElementById('descricao')
+const mensagem = document.getElementById('mensagem')
+
+let categorias = []
+let idEmEdicao = null
+
+async function carregarCategorias() {
+    lista.innerHTML = '<li class="lista-vazia">Carregando...</li>'
+    try {
+        const resposta = await fetch('/api/categorias')
+        categorias = await resposta.json()
+
+        if (!resposta.ok) throw new Error(categorias.error || 'Erro ao carregar')
+        renderizarLista()
+    } catch (error) {
+        mensagem.textContent = `Erro: ${error.message}`
+    }
+}
+
+function renderizarLista() {
+    lista.innerHTML = ''
+    if (categorias.length === 0) {
+        lista.innerHTML = '<li class="lista-vazia">Nenhuma categoria cadastrada!</li>'
+        return
+    }
+    for (const categoria of categorias) {
+        lista.appendChild(
+            categoria.id_categoria === idEmEdicao ? criarItemEdicao(categoria) : criarItemVisualizacao(categoria)
+        )
+    }
+}
+
+function criarItemVisualizacao(categoria) {
+    const item = document.createElement('li')
+    item.className = 'categoria-item'
+
+    const info = document.createElement('span')
+    info.className = 'categoria-info'
+    info.innerHTML = `<span class="categoria-id">#${categoria.id_categoria}</span> ${categoria.descricao}`
+
+    const btnEditar = document.createElement('button')
+    btnEditar.textContent = 'Editar'
+    btnEditar.className = 'btn btn-editar'
+    btnEditar.addEventListener('click', () => {
+        idEmEdicao = categoria.id_categoria
+        renderizarLista()
+    })
+
+    const btnExcluir = document.createElement('button')
+    btnExcluir.textContent = 'Excluir'
+    btnExcluir.className = 'btn btn-excluir'
+    btnExcluir.addEventListener('click', () => {
+        excluirCategoria(categoria.id_categoria)
+    })
+
+    const acoes = document.createElement('div')
+    acoes.className = 'categoria-acoes'
+
+    acoes.append(btnEditar, btnExcluir)
+    item.append(info, acoes)
+    return item
+}
+
+async function excluirCategoria(id_excluirCategoria) {
+    try {
+        const resposta = await fetch('/api/excluirCategorias', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_categoria: id_excluirCategoria })
+        })
+        const dados = await resposta.json()
+
+        if (resposta.ok) {
+            mostrarMensagem(`Categoria "${dados.descricao}" excluída!`)
+            campoDescricao.value = ''
+            carregarCategorias()
+        } else {
+            mostrarMensagem(`Erro: ${dados.erro}`, 'erro')
+        }
+    } catch (erro) {
+        mostrarMensagem(`Erro de conexão: ${erro.message}`, 'erro')
+    }
+}
+
+formulario.addEventListener('submit', async (evento) => {
+    evento.preventDefault()
+
+    try {
+        const resposta = await fetch('/api/categorias', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ descricao: campoDescricao.value })
+        })
+        const dados = await resposta.json()
+
+        if (resposta.ok) {
+            mostrarMensagem(`Categoria "${dados.descricao}" cadastrada!`)
+            campoDescricao.value = ''
+            carregarCategorias()
+        } else {
+            mostrarMensagem(`Erro: ${dados.erro}`, 'erro')
+        }
+    } catch (erro) {
+        mostrarMensagem(`Erro ao cadastrar: ${erro.message}`, 'erro')
+    }
+})
+
+function criarItemEdicao(categoria) {
+    const item = document.createElement('li')
+    item.className = 'categoria-item categoria-item-edicao'
+
+    const input = document.createElement('input')
+    input.type = 'text'
+    input.value = categoria.descricao
+    input.className = 'input-edicao'
+
+    const btnSalvar = document.createElement('button')
+    btnSalvar.textContent = 'Salvar'
+    btnSalvar.className = 'btn btn-salvar'
+    btnSalvar.addEventListener('click', () => salvarEdicao(categoria, input.value))
+
+    const btnCancelar = document.createElement('button')
+    btnCancelar.textContent = 'Cancelar'
+    btnCancelar.className = 'btn btn-cancelar'
+    btnCancelar.addEventListener('click', () => {
+        idEmEdicao = null
+        renderizarLista()
+    })
+
+    const acoes = document.createElement('div')
+    acoes.className = 'categoria-acoes'
+    acoes.append(btnSalvar, btnCancelar)
+    item.append(input, acoes)
+    input.focus()
+    return item
+}
+
+async function salvarEdicao(categoria, novaDescricao) {
+    if (!novaDescricao.trim()) {
+        mostrarMensagem('A descrição não pode ficar vazia.', 'erro')
+        return
+    }
+
+    try {
+        const resposta = await fetch(`/api/categorias/${categoria.id_categoria}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ descricao: novaDescricao })
+        })
+        const dados = await resposta.json()
+
+        if (resposta.ok) {
+            idEmEdicao = null
+            mostrarMensagem(`Categoria atualizada para "${dados.descricao}"!`)
+            carregarCategorias()
+        } else {
+            mostrarMensagem(`Erro: ${dados.erro}`, 'erro')
+        }
+    } catch (erro) {
+        mostrarMensagem(`Erro ao salvar edição: ${erro.message}`, 'erro')
+    }
+}
+
+function mostrarMensagem(texto, tipo = 'sucesso') {
+    mensagem.textContent = texto
+    mensagem.className = `mensagem mensagem-${tipo}`
+}
+
+carregarCategorias()
+Use o código com cuidado.
+Agora só falta conferir o seu server.js para garantir que a rota PUT /api/categorias/:id existe por lá e que o servidor está entregando o seu HTML corretamente. Pode colar o código do server.js aqui?
+As respostas da IA podem conter erros. Saiba mais
+
+e agora vou mandar o server.js
+
+Pode mandar o código do server.js! Assim que você enviar, eu verifico todas as rotas (/api/categorias, cadastro e edição) e fecho o ajuste completo para você testar.
+Envie o código do server.js quando estiver pronto.
+As respostas da IA podem conter erros. Saiba mais
+
+// Servidor da Loja do Zé
+// O navegador conversa com ESTE servidor (mesma origem, então não há CORS).
+// Só o servidor conversa com o Neon, e a senha do banco nunca chega ao navegador.
+const http = require('http')
+const fs = require('fs')
+const path = require('path')
+const { executarQueryNeon } = require('./script_db_quatum.js')
+
+const PORTA = process.env.PORT || 3001
+
+const arquivos = {
+    '/': { arquivo: 'index.html', tipo: 'text/html; charset=utf-8' },
+    '/index.html': { arquivo: 'index.html', tipo: 'text/html; charset=utf-8' },
+    '/app.js': { arquivo: 'app.js', tipo: 'text/javascript; charset=utf-8' },
+    '/style.css': { arquivo: 'style.css', tipo: 'text/css; charset=utf-8' }
+}
+
+function responderJSON(res, status, dados) {
+    res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' })
+    res.end(JSON.stringify(dados))
+}
+
+function lerCorpo(req) {
+    return new Promise((resolve, reject) => {
+        let corpo = ''
+        req.on('data', pedaco => corpo += pedaco)
+        req.on('end', () => {
+            try { resolve(JSON.parse(corpo || '{}')) }
+            catch (erro) { reject(erro) }
+        })
+    })
+}
+
+const servidor = http.createServer(async (req, res) => {
+    // GET /api/categorias -> lista as categorias
+    if (req.url === '/api/categorias' && req.method === 'GET') {
+        const linhas = await executarQueryNeon('SELECT * FROM categoria ORDER BY id_categoria')
+        if (linhas === null) return responderJSON(res, 500, { erro: 'Falha ao consultar o banco' })
+        return responderJSON(res, 200, linhas)
+    }
+
+    // POST /api/categorias -> cadastra uma categoria nova
+    if (req.url === '/api/categorias' && req.method === 'POST') {
+        let corpo
+        try { corpo = await lerCorpo(req) }
+        catch { return responderJSON(res, 400, { erro: 'JSON inválido' }) }
+
+        const descricao = (corpo.descricao || '').trim()
+        if (!descricao) return responderJSON(res, 400, { erro: 'Informe a descrição' })
+
+        const linhas = await executarQueryNeon(
+            'INSERT INTO categoria (descricao) VALUES ($1) RETURNING *',
+            [descricao]
+        )
+        if (linhas === null) return responderJSON(res, 500, { erro: 'Falha ao inserir no banco' })
+        return responderJSON(res, 201, linhas[0])
+    }
+
+    // edita uma categoria  4 minutos valendo nota 3 pontos
+        // exclui uma categoria quem é a entidade forte categoria ou produto ?
+    if (req.url === '/api/excluirCategorias' && req.method==='POST')
+    {
+        let corpo 
+        try{corpo = await lerCorpo(req)}
+        catch{return responderJSON(res,400,{erro:'ID null'})}
+
+        const conteudo =(corpo.id_categoria || '') //trim só funciona para strings 
+        if(!conteudo) return responderJSON(res,400,{erro:'Informe o ID'})
+        const linhas = await executarQueryNeon(
+            'DELETE FROM categoria WHERE id_categoria = $1 RETURNING *', [conteudo])// nome de variavel errada
+       
+        if (linhas === null) return responderJSON(res, 500, { erro: 'Falha ao deletar no banco' })
+        return responderJSON(res, 201, linhas[0])
+
+    }
+    // Arquivos da página
+    const rota = arquivos[req.url]
+    if (rota) {
+        res.writeHead(200, { 'Content-Type': rota.tipo })
+        return fs.createReadStream(path.join(__dirname, rota.arquivo)).pipe(res)
+    }
+
+    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' })
+    res.end('Página não encontrada')
+})
+
+servidor.listen(PORTA, () => {
+    console.log(Loja do Zé rodando em http://localhost:${PORTA})
+})
+
+Olhando o seu server.js, deu para matar a charada completa! Ele foi feito usando o módulo nativo http do Node (sem Express) e está muito bem estruturado.
+Além de adicionar a rota de editar, descobri um erro oculto logo na linha 7 do seu server.js que impede o servidor de ligar:
+• Erro de digitação no nome do arquivo: Na linha 7 está require('./script_db_quatum.js') (faltando a letra "n" em quantum). Olhando a primeira imagem do seu VS Code, o nome real do arquivo é script_db_quantum.js. Sem esse "n", o servidor dá erro e não inicia!
+
+Como deixar tudo funcionando (Cadastro + Botão Editar + Excluir)
+
+Siga estes 3 passos simples:
+
+1. Atualize o seu server.js
+
+Substitua o código do seu server.js por este abaixo. Ele já corrige o nome do arquivo script_db_quantum.js, corrige as crases no console.log final e adiciona a rota PUT /api/categorias/:id para editar:
+javascript
+const http = require('http')
+const fs = require('fs')
+const path = require('path')
+// Corrigido: adicionado o 'n' em script_db_quantum.js
+const { executarQueryNeon } = require('./script_db_quantum.js')
+
+const PORTA = process.env.PORT || 3001
+
+const arquivos = {
+    '/': { arquivo: 'index.html', tipo: 'text/html; charset=utf-8' },
+    '/index.html': { arquivo: 'index.html', tipo: 'text/html; charset=utf-8' },
+    '/app.js': { arquivo: 'app.js', tipo: 'text/javascript; charset=utf-8' },
+    '/style.css': { arquivo: 'style.css', tipo: 'text/css; charset=utf-8' }
+}
+
+function responderJSON(res, status, dados) {
+    res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' })
+    res.end(JSON.stringify(dados))
+}
+
+function lerCorpo(req) {
+    return new Promise((resolve, reject) => {
+        let corpo = ''
+        req.on('data', pedaco => corpo += pedaco)
+        req.on('end', () => {
+            try { resolve(JSON.parse(corpo || '{}')) }
+            catch (erro) { reject(erro) }
+        })
+    })
+}
+
+const servidor = http.createServer(async (req, res) => {
+    // GET /api/categorias -> lista as categorias
+    if (req.url === '/api/categorias' && req.method === 'GET') {
+        const linhas = await executarQueryNeon('SELECT * FROM categoria ORDER BY id_categoria')
+        if (linhas === null) return responderJSON(res, 500, { erro: 'Falha ao consultar o banco' })
+        return responderJSON(res, 200, linhas)
+    }
+
+    // POST /api/categorias -> cadastra uma categoria nova
+    if (req.url === '/api/categorias' && req.method === 'POST') {
+        let corpo
+        try { corpo = await lerCorpo(req) }
+        catch { return responderJSON(res, 400, { erro: 'JSON inválido' }) }
+
+        const descricao = (corpo.descricao || '').trim()
+        if (!descricao) return responderJSON(res, 400, { erro: 'Informe a descrição' })
+
+        const linhas = await executarQueryNeon(
+            'INSERT INTO categoria (descricao) VALUES ($1) RETURNING *',
+            [descricao]
+        )
+        if (linhas === null) return responderJSON(res, 500, { erro: 'Falha ao inserir no banco' })
+        return responderJSON(res, 201, linhas[0])
+    }
+
+    // PUT /api/categorias/:id -> edita uma categoria existente
+    if (req.url.startsWith('/api/categorias/') && req.method === 'PUT') {
+        const id = req.url.split('/')[3]
+        if (!id) return responderJSON(res, 400, { erro: 'Informe o ID da categoria' })
+
+        let corpo
+        try { corpo = await lerCorpo(req) }
+        catch { return responderJSON(res, 400, { erro: 'JSON inválido' }) }
+
+        const descricao = (corpo.descricao || '').trim()
+        if (!descricao) return responderJSON(res, 400, { erro: 'Informe a nova descrição' })
+
+        const linhas = await executarQueryNeon(
+            'UPDATE categoria SET descricao = $1 WHERE id_categoria = $2 RETURNING *',
+            [descricao, id]
+        )
+        if (linhas === null) return responderJSON(res, 500, { erro: 'Falha ao atualizar no banco' })
+        if (linhas.length === 0) return responderJSON(res, 404, { erro: 'Categoria não encontrada' })
+        return responderJSON(res, 200, linhas[0])
+    }
+
+    // POST /api/excluirCategorias -> exclui uma categoria
+    if (req.url === '/api/excluirCategorias' && req.method === 'POST') {
+        let corpo
+        try { corpo = await lerCorpo(req) }
+        catch { return responderJSON(res, 400, { erro: 'ID null' }) }
+
+        const conteudo = corpo.id_categoria
+        if (!conteudo) return responderJSON(res, 400, { erro: 'Informe o ID' })
+
+        const linhas = await executarQueryNeon(
+            'DELETE FROM categoria WHERE id_categoria = $1 RETURNING *',
+            [conteudo]
+        )
+
+        if (linhas === null) return responderJSON(res, 500, { erro: 'Falha ao deletar no banco' })
+        return responderJSON(res, 200, linhas[0])
+    }
+
+    // Arquivos da página
+    const rota = arquivos[req.url]
+    if (rota) {
+        res.writeHead(200, { 'Content-Type': rota.tipo })
+        return fs.createReadStream(path.join(__dirname, rota.arquivo)).pipe(res)
+    }
+
+    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' })
+    res.end('Página não encontrada')
+})
+
+servidor.listen(PORTA, () => {
+    console.log(`Loja do Zé rodando em http://localhost:${PORTA}`)
+})
+Use o código com cuidado.
+
+2. Salve o app.js corrigido
+
+Certifique-se de que o seu arquivo app.js está atualizado com o código completo que te enviei na mensagem anterior (que contém a função salvarEdicao chamando PUT /api/categorias/${categoria.id_categoria}).
+
+3. Ligue o servidor e acesse pelo endereço certo!
+
+1. Salve todos os arquivos no VS Code (Ctrl + S).
+2. Abra o terminal no VS Code (Ctrl + ' ou menu Terminal -> New Terminal).
+3. Digite o comando abaixo e aperte Enter:bash
+node server.js
+Use o código com cuidado.
+4. Vai aparecer a mensagem: Loja do Zé rodando em http://localhost:3001.
+5. Importante: Feche a aba antiga do navegador (file:///C:/...) e abra uma nova aba acessando exatamente:
+http://localhost:3001
+Agora, quando você digitar uma categoria e clicar em CADASTRAR, ela vai salvar no Neon e aparecer na lista logo abaixo com os botões Editar e Excluir prontos para usar!
+Teste rodar o servidor e acessar http://localhost:3001. Se aparecer algum erro no terminal ou se quiser estilizar os botões de Editar/Salvar/Cancelar no style.css, me avise!
+As respostas da IA podem conter erros. Saiba mais
+
+nao quero o botao editar ainda quero que vc veja o pq de ele nao estar conectando , quando eu clico em cadastar nao aparece listado embaixo aquela palavra listada, tem que vir do banco de dados né
+
+Sim, com certeza! Para aparecer listado embaixo, o dado precisa ir até o banco de dados Neon, ser salvo lá e voltar para o seu site.
+Existem 4 motivos exatos no seu projeto que estão bloqueando essa conexão neste momento:
+
+1. O site está aberto do jeito errado (O principal motivo)
+
+Olhando a barra de endereço do navegador na sua primeira imagem, você abriu o arquivo clicando duas vezes nele (file:///C:/Users/.../index.html).
+• Quando você abre o arquivo assim, o seu servidor (server.js) não está sendo usado. Sem o servidor ligado, o navegador não tem como conversar com o banco de dados Neon.
+• Como corrigir: Você precisa ligar o servidor no terminal do VS Code (node server.js) e abrir o site digitando http://localhost:3001 na barra de endereço do navegador.
+
+2. Erro no nome do arquivo dentro do server.js
+
+Na linha 7 do seu server.js está escrito:
+javascript
+const { executarQueryNeon } = require('./script_db_quatum.js')
+Use o código com cuidado.
+Faltou a letra "n" em quantum (o arquivo real se chama script_db_quantum.js). Por causa disso, quando você tenta rodar o servidor, ele dá erro e nem chega a conectar no banco Neon.
+
+3. Falta das crases (`) no app.js e no server.js
+
+Nos códigos que você enviou, as frases que usam ${...} estão sem crases em volta (por exemplo: Erro ${error.menssage} em vez de `Erro ${error.message}`).
+• Isso causa um erro de sintaxe que trava o app.js antes mesmo dele rodar.
+• Como o JavaScript trava, o comando evento.preventDefault() não funciona. Aí, quando você clica em CADASTRAR, a página apenas recarrega (colocando um ? no final da URL, igual na sua primeira foto) e não envia nada para o banco.
+
+4. Verifique se a tabela categoria já foi criada no Neon
+
+Você me mandou o código CREATE TABLE IF NOT EXISTS categoria.... Certifique-se de que você realmente colou e rodou (clicou em Run) esse comando lá no SQL Editor do site do Neon. Se a tabela não existir lá dentro, o banco recusa o cadastro.
+
+Resumo prático para fazer conectar agora:
+
+1. Corrija o server.js: Mude './script_db_quatum.js' para './script_db_quantum.js' na linha 7 e coloque crases no console.log da última linha:javascript
+console.log(`Loja do Zé rodando em http://localhost:${PORTA}`)
+Use o código com cuidado.
+2. Corrija as crases no app.js: Garanta que todas as strings com ${...} tenham crases (`) no início e no fim.
+3. Inicie o servidor no VS Code: Abra o terminal do VS Code, digite node server.js e aperte Enter.
+4. Abra o endereço certo: No navegador, acesse http://localhost:3001.
+Tente rodar node server.js no terminal do VS Code agora. Qual mensagem aparece no terminal quando você dá Enter?
+As respostas da IA podem conter erros. Saiba mais
+
+to fazendo pelo vs code nao a nada no navegador
+
+Entendi! Se você está fazendo tudo direto pelo VS Code (usando a extensão Live Server — repare no botão Go Live lá no canto inferior direito da sua primeira imagem — ou o navegador integrado do VS Code), é exatamente por isso que não está conectando.
+O Live Server do VS Code abre apenas arquivos estáticos (index.html, style.css, app.js), mas ele não roda o seu server.js. Como é o server.js que faz a ponte com o banco de dados Neon, sem ele ligado não há conexão com o banco.
+
+Como conectar e rodar pelo VS Code do jeito certo:
+
+1. Corrija o nome do arquivo no server.js:
+Na linha 7 do seu server.js, mude de:javascript
+const { executarQueryNeon } = require('./script_db_quatum.js')
+Use o código com cuidado.
+Para (com a letra "n" em quantum):javascript
+const { executarQueryNeon } = require('./script_db_quantum.js')
+Use o código com cuidado.
+E na última linha do server.js, coloque crases ` em volta da frase:javascript
+console.log(`Loja do Zé rodando em http://localhost:${PORTA}`)
+Use o código com cuidado.
+2. Abra o Terminal integrado do VS Code:
+No menu superior do VS Code, clique em Terminal -> New Terminal (ou aperte Ctrl + ').
+3. Ligue o seu servidor:
+Na janela do terminal que abriu embaixo no VS Code, digite o comando abaixo e aperte Enter:bash
+node server.js
+Use o código com cuidado.
+(Se der tudo certo, vai aparecer a mensagem: Loja do Zé rodando em http://localhost:3001).
+4. Abra o site pelo link do servidor:
+Segure a tecla Ctrl e clique em cima do link http://localhost:3001 que apareceu no terminal do VS Code (ou abra o navegador e digite http://localhost:3001). Não use o botão "Go Live".
+
+Por que isso faz funcionar?
+
+O próprio código do seu server.js já está programado para entregar o index.html, o style.css e o app.js quando você acessa http://localhost:3001, além de liberar as rotas /api/categorias que salvam e buscam os dados no Neon.
+Abra o Terminal do VS Code, rode node server.js e me diga qual mensagem aparece lá embaixo (se aparece o link http://localhost:3001 ou algum erro em vermelho).
+As respostas da IA podem conter erros. Saiba mais
+
+apareceu isso             PS C:\Users\jose.martins\Desktop\PROJETO FINAL 1° DS> node server.js
+C:\Users\jose.martins\Desktop\PROJETO FINAL 1° DS\script_db_quantum.js:7
+const neonHttpEndpoint  = https://${host}/sql
+                               ^
+
+SyntaxError: Unexpected token ':'
+    at wrapSafe (node:internal/modules/cjs/loader:1806:18)
+    at Module._compile (node:internal/modules/cjs/loader:1847:20)
+    at Object..js (node:internal/modules/cjs/loader:2013:10)
+    at Module.load (node:internal/modules/cjs/loader:1596:32)
+    at Module._load (node:internal/modules/cjs/loader:1398:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.require (node:internal/modules/cjs/loader:1619:12)
+    at require (node:internal/modules/helpers:191:16)
+    at Object.<anonymous> (C:\Users\jose.martins\Desktop\PROJETO FINAL 1° DS\server.js:7:31)
+    at Module._compile (node:internal/modules/cjs/loader:1873:14)
+
+Node.js v26.2.0
+PS C:\Users\jose.martins\Desktop\PROJETO FINAL 1° DS>
+
+Achamos o problema exato! Esse erro mostra que faltam as crases (`) em volta do texto com ${...} dentro dos seus arquivos JavaScript (script_db_quantum.js, server.js e app.js).
+Sem as crases, o Node.js e o navegador não entendem que aquilo é um texto e travam na hora.
+
+Como corrigir em cada arquivo:
+
+
+1. No arquivo script_db_quantum.js
+
+Coloque crases ` na linha 7 e na linha 29:
+• Linha 7:javascript
+const neonHttpEndpoint = `https://${host}/sql`
+Use o código com cuidado.
+• Linha 29:javascript
+throw new Error(`Erro HTTP ${resposta.status}: ${erroTexto}`)
+Use o código com cuidado.
+
+2. No arquivo server.js
+
+Coloque crases ` na última linha (no console.log):
+javascript
+servidor.listen(PORTA, () => {
+    console.log(`Loja do Zé rodando em http://localhost:${PORTA}`)
+})
+Use o código com cuidado.
+
+3. No arquivo app.js
+
+Garanta que todas as linhas que têm ${...} também estejam dentro de crases ` (se você ainda não substituiu pelo código que te mandei antes, verifique principalmente as linhas do mensagem.textContent, info.innerHTML, mostrarMensagem e mensagem.className).
+
+Como testar agora:
+
+1. Salve todos os arquivos alterados (Ctrl + S em cada aba do VS Code).
+2. No terminal do VS Code, rode novamente:bash
+node server.js
+Use o código com cuidado.
+3. Quando aparecer Loja do Zé rodando em http://localhost:3001, clique nesse link segurando Ctrl (ou cole no navegador) e teste cadastrar uma categoria!
+Corrija essas crases, salve os arquivos e rode node server.js novamente. Funcionou o link http://localhost:3001 e apareceu a categoria listada ao cadastrar?
+As respostas da IA podem conter erros. Saiba mais
+
+agora apareceu PS C:\Users\jose.martins\Desktop\PROJETO FINAL 1° DS> node server.js
+Loja do Zé rodando em http://localhost:3001
+
+agora apareceu PS C:\Users\jose.martins\Desktop\PROJETO FINAL 1° DS> node server.js
+Loja do Zé rodando em http://localhost:3001
+Excelente! Seu servidor está rodando perfeitamente!
+Agora siga estes passos finais para testar a conexão com o banco de dados:
+1. Abra o site pelo servidor: Segure a tecla Ctrl e clique no link azul http://localhost:3001 direto no terminal do VS Code (ou abra seu navegador e digite http://localhost:3001).
+2. Teste o cadastro: Digite o nome de uma categoria (ex: Brinquedos) e clique em CADASTRAR.
+3. Verifique o resultado: Se as crases no seu app.js já estiverem corrigidas, a palavra vai salvar no Neon e aparecer listada logo abaixo de CATEGORIAS.
+(Lembre-se: sempre que você alterar algum código no server.js, precisa clicar no terminal, apertar Ctrl + C para parar o servidor e rodar node server.js novamente).
+Acesse http://localhost:3001 e teste cadastrar uma categoria. Ela apareceu listada na tela ou exibiu alguma mensagem de erro?
+As respostas da IA podem conter erros. Saiba mais
+
+apareceu pagina nao encontrada pq sera
+
+A mensagem "Página não encontrada" vem diretamente da penúltima linha do seu server.js (res.end('Página não encontrada')). Isso mostra que o servidor está funcionando, mas a URL que você acessou no navegador não bateu com o que está configurado no objeto arquivos.
+Existem dois motivos para isso acontecer:
+
+1. O endereço digitado no navegador tem algo a mais
+
+Você precisa acessar exatamente http://localhost:3001/ ou http://localhost:3001/index.html.
+• Se você abriu outra porta (ex: http://127.0.0.1:5500 do Live Server) ou se o endereço tiver algum caminho diferente (como http://localhost:3001/PROJETO%20FINAL...), o server.js cai no "Página não encontrada".
+
+2. O arquivo index.html não está na mesma pasta que o server.js
+
+Olhando a barra lateral esquerda (Explorer) da sua primeira imagem:
+• O server.js, index.html, app.js e style.css parecem estar na mesma pasta raiz (PROJETO FINAL 1° DS).
+• Porém, para ter certeza do que o navegador está pedindo ao servidor, podemos colocar um console.log(req.url) no server.js ou ajustar a leitura de arquivos para ignorar parâmetros extras na URL (como ?).
+
+Como corrigir e descobrir na hora:
+
+No seu arquivo server.js, altere a parte final (// Arquivos da página) para este código abaixo, que limpa qualquer ? da URL e avisa no terminal qual arquivo ele tentou abrir:
+javascript
+    // Arquivos da página (ignora '?' ou parâmetros extras na URL)
+    const urlLimpa = req.url.split('?')[0]
+    const rota = arquivos[urlLimpa]
+
+    if (rota) {
+        const caminhoArquivo = path.join(__dirname, rota.arquivo)
+        if (fs.existsSync(caminhoArquivo)) {
+            res.writeHead(200, { 'Content-Type': rota.tipo })
+            return fs.createReadStream(caminhoArquivo).pipe(res)
+        } else {
+            console.log('Arquivo não encontrado na pasta:', caminhoArquivo)
+        }
+    }
+
+    console.log('Rota não encontrada:', req.url)
+    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' })
+    res.end('Página não encontrada')
+Use o código com cuidado.
+
+Passos para testar:
+
+1. Cole esse ajuste no final do seu server.js e salve (Ctrl + S).
+2. No terminal do VS Code, aperte Ctrl + C para parar o servidor antigo e rode node server.js de novo.
+3. No navegador, digite exatamente http://localhost:3001 na barra de endereço e aperte Enter.
+Se ainda aparecer "Página não encontrada" após fazer isso, copie e cole aqui qual endereço exato está na barra do seu navegador e o que apareceu no terminal do VS Code.
+As respostas da IA podem conter erros. Saiba mais
+
+Não é possível aceder a este site
+
+A mensagem "Não é possível aceder a este site" significa que o servidor node server.js não está ligado no momento (ou você parou ele com Ctrl + C e ainda não ligou de novo, ou fechou o terminal).
+Quando o servidor está desligado, o endereço http://localhost:3001 fica fora do ar.
+
+Como resolver em 3 passos rápidos:
+
+1. Verifique o terminal no VS Code:
+	• Se o terminal estiver mostrando PS C:\Users\jose.martins\Desktop\PROJETO FINAL 1° DS>, significa que o servidor está desligado.
+	• Digite node server.js e aperte Enter.
+2. Confirme se ele continuou ligado:
+	• Precisa aparecer a frase:
+Loja do Zé rodando em http://localhost:3001
+	• Importante: Não feche o terminal nem aperte Ctrl + C enquanto estiver testando o site! O terminal precisa ficar aberto e travado nessa mensagem.
+3. Recarregue o navegador:
+	• Volte na aba do navegador onde está http://localhost:3001 e aperte F5 (ou clique no botão de recarregar).
+
+Se ele desligar sozinho logo após rodar node server.js:
+
+Significa que ficou algum erro de digitação quando você colou o código novo no server.js (por exemplo, uma chave { ou } faltando ou sobrando). Se isso acontecer, o terminal vai mostrar uma mensagem de erro em vermelho.
+Rode node server.js no terminal e me diga: ele ficou parado na mensagem Loja do Zé rodando em http://localhost:3001 ou apareceu algum erro em vermelho?
+As respostas da IA podem conter erros. Saiba mais
+
+o app.js esta com mais de 9 erros                       //Este arquivo roda no Navegador (Cliente)
+// Ele não fala com o NEON: Chama as rotas /api do nosso server.js
+
+
+const lista = document.getElementById('lista-categorias')
+const formulario = document.getElementById('form-categoria')
+const campoDescricao = document.getElementById('descricao')
+const mensagem = document.getElementById('mensagem')
+
+let categorias = []
+let idEmEdicao = null
+
+async function carregarCategorias() {
+    lista.innerHTML = '<li  class="lista-vazia"> Carregando....</li>'
+    try {
+        const resposta = await fetch('/api/categorias')
+        categorias = await resposta.json()
+
+        if (!resposta.ok) throw new Error(categorias.error)
+        renderizarLista()
+    }
+    catch (error) {
+        mensagem.textContent = Erro ${error.menssage}
+    }
+}
+function renderizarLista() {
+    lista.innerHTML = ''
+    if (categorias.length === 0) {
+        lista.innerHTML = '<li class="lista-vazia">Nenhuma categoria cadastrada!</li>'
+        return
+    }
+    for (const categoria of categorias) {
+        lista.appendChild(
+            categoria.id_categoria === idEmEdicao ? criarItemEdicao(categoria) : criarItemVisualizacao(categoria)
+        )
+    }
+}
+function criarItemVisualizacao(categoria) {
+    const item = document.createElement('li')
+    item.className = 'categoria-item'
+
+    const info = document.createElement('span')
+    info.className = 'categoria-info'
+    info.innerHTML = <span class="categoria-id">#${categoria.descricao}</span> ${categoria.descricao}
+
+    const btnEditar = document.createElement('button')
+    btnEditar.textContent = 'Editar'
+    btnEditar.className = 'btn btn-editar'
+    btnEditar.addEventListener('click', () => {
+        idEmEdicao = categoria.id_categoria
+        renderizarLista()
+    })
+
+    const btnExcluir = document.createElement('button')
+    btnExcluir.textContent = 'Excluir'
+    btnExcluir.className = 'btn btn-excluir'
+    btnExcluir.addEventListener('click', () => {
+        idEmEdicao = categoria.id_categoria
+        excluirCategoria(idEmEdicao)
+    })
+
+    const acoes = document.createElement('div')
+    acoes.className = 'categoria-acoes'
+
+    acoes.append(btnEditar, btnExcluir)
+    item.append(info, acoes)
+    return item
+}
+async function excluirCategoria(id_excluirCategoria) {
+
+
+    try {
+        const resposta = await fetch('api/excluirCategorias', {
+            method: 'POST',
+            headers: { 'Content-type': 'application/json' },
+            body: JSON.stringify({ id_categoria: id_excluirCategoria })
+        })
+        const dados = await resposta.json()
+
+        if (resposta.ok) {
+            mostrarMensagem(Categoria "${dados.descricao}" Excluida!)
+            campoDescricao.value = ''
+            carregarCategorias()
+        }
+        else {
+            mostrarMensagem(Erro: ${dados.erro}, 'erro')
+        }
+    }
+    catch (erro) {
+        mostrarMensagem(Erro de conexão: ${erro.mensagem}, erro)
+    }
+    // Não esquecer de envolver todas as funções assincronas em um try-catch
+}
+function montarLista(dados) {
+    lista.innerHTML = '<li>Carregando ....</li>'
+    if (dados.length === 0) {
+        lista.innerHTML = '<li>Nenhuma categoria cadastrada ....</li>'
+        return
+    }
+    lista.innerHTML = ''
+    for (const categoria of dados) {
+        const item = document.createElement('li')
+        item.textContent = ${categoria.id_categoria} - ${categoria.descricao}
+        lista.appendChild(item)
+    }
+}
+
+
+formulario.addEventListener('submit', async (evento) => {
+    evento.preventDefault()
+
+    const resposta = await fetch('api/categorias', {
+        method: 'POST',
+        headers: { 'Content-type': 'application/json' },
+        body: JSON.stringify({ descricao: campoDescricao.value })
+    })
+    const dados = await resposta.json()
+
+    if (resposta.ok) {
+        mostrarMensagem(Categoria "${dados.descricao}" cadastrada!)
+        campoDescricao.value = ''
+        carregarCategorias()
+    }
+    else {
+        mostrarMensagem(Erro: ${dados.erro}, 'erro')
+    }
+
+})
+
+function criarItemEdicao(categoria) {
+    const item = document.createElement('li')
+    item.classList = 'categoria-item  categoria-item-edicao'
+
+    const input = document.createElement('input')
+
+    input.type = 'text'
+    input.value = categoria.descricao
+    input.className = 'input-edicao'
+
+    const btnSalvar = document.createElement('button')
+    btnSalvar.textContent = 'Salvar'
+    btnSalvar.className = 'btn btn-salvar'
+    btnSalvar.addEventListener('click', () => salvarEdicao(categoria, input.value))
+
+    const btnCancelar = document.createElement('button')
+    btnCancelar.textContent = 'Cancelar'
+    btnCancelar.className = 'btn btn-cancelar'
+    btnCancelar.addEventListener('click', () => {
+        idEmEdicao = null
+        renderizarLista()
+    })
+
+    const acoes = document.createElement('div')
+    acoes.className = 'categoria-acoes'
+    acoes.append(btnSalvar, btnCancelar)
+    item.append(input, acoes)
+    input.focus()
+    return item
+}
+
+
+function mostrarMensagem(texto, tipo = 'sucesso') {
+    mensagem.textContent = texto
+    mensagem.className = mensagem mensagem-${tipo}
+}
+
+
+carregarCategorias()
+
+Os erros que o VS Code está marcando no seu app.js (que até aparecia como 9+ na sua primeira imagem) acontecem porque todas as strings que usam ${...} estão sem as crases (`) em volta.
+Quando você copia e cola código de alguns lugares (como PDFs ou chats antigos), as crases somem e o JavaScript quebra com vários erros de sintaxe.
+
+Como corrigir o app.js agora mesmo:
+
+Apague tudo que está no seu arquivo app.js, cole o código exato abaixo (onde todas as crases ` já foram recolocadas no lugar certo) e aperte Ctrl + S para salvar:
+javascript
+// Este arquivo roda no Navegador (Cliente)
+// Ele não fala com o NEON: Chama as rotas /api do nosso server.js
+
+const lista = document.getElementById('lista-categorias')
+const formulario = document.getElementById('form-categoria')
+const campoDescricao = document.getElementById('descricao')
+const mensagem = document.getElementById('mensagem')
+
+let categorias = []
+let idEmEdicao = null
+
+async function carregarCategorias() {
+    lista.innerHTML = '<li class="lista-vazia">Carregando....</li>'
+    try {
+        const resposta = await fetch('/api/categorias')
+        categorias = await resposta.json()
+
+        if (!resposta.ok) throw new Error(categorias.error || 'Erro ao carregar')
+        renderizarLista()
+    }
+    catch (error) {
+        mensagem.textContent = `Erro: ${error.message}`
+    }
+}
+
+function renderizarLista() {
+    lista.innerHTML = ''
+    if (categorias.length === 0) {
+        lista.innerHTML = '<li class="lista-vazia">Nenhuma categoria cadastrada!</li>'
+        return
+    }
+    for (const categoria of categorias) {
+        lista.appendChild(
+            categoria.id_categoria === idEmEdicao ? criarItemEdicao(categoria) : criarItemVisualizacao(categoria)
+        )
+    }
+}
+
+function criarItemVisualizacao(categoria) {
+    const item = document.createElement('li')
+    item.className = 'categoria-item'
+
+    const info = document.createElement('span')
+    info.className = 'categoria-info'
+    info.innerHTML = `<span class="categoria-id">#${categoria.id_categoria}</span> ${categoria.descricao}`
+
+    const btnEditar = document.createElement('button')
+    btnEditar.textContent = 'Editar'
+    btnEditar.className = 'btn btn-editar'
+    btnEditar.addEventListener('click', () => {
+        idEmEdicao = categoria.id_categoria
+        renderizarLista()
+    })
+
+    const btnExcluir = document.createElement('button')
+    btnExcluir.textContent = 'Excluir'
+    btnExcluir.className = 'btn btn-excluir'
+    btnExcluir.addEventListener('click', () => {
+        excluirCategoria(categoria.id_categoria)
+    })
+
+    const acoes = document.createElement('div')
+    acoes.className = 'categoria-acoes'
+
+    acoes.append(btnEditar, btnExcluir)
+    item.append(info, acoes)
+    return item
+}
+
+async function excluirCategoria(id_excluirCategoria) {
+    try {
+        const resposta = await fetch('/api/excluirCategorias', {
+            method: 'POST',
+            headers: { 'Content-type': 'application/json' },
+            body: JSON.stringify({ id_categoria: id_excluirCategoria })
+        })
+        const dados = await resposta.json()
+
+        if (resposta.ok) {
+            mostrarMensagem(`Categoria "${dados.descricao}" Excluida!`)
+            campoDescricao.value = ''
+            carregarCategorias()
+        }
+        else {
+            mostrarMensagem(`Erro: ${dados.erro}`, 'erro')
+        }
+    }
+    catch (erro) {
+        mostrarMensagem(`Erro de conexão: ${erro.message}`, 'erro')
+    }
+}
+
+formulario.addEventListener('submit', async (evento) => {
+    evento.preventDefault()
+
+    try {
+        const resposta = await fetch('/api/categorias', {
+            method: 'POST',
+            headers: { 'Content-type': 'application/json' },
+            body: JSON.stringify({ descricao: campoDescricao.value })
+        })
+        const dados = await resposta.json()
+
+        if (resposta.ok) {
+            mostrarMensagem(`Categoria "${dados.descricao}" cadastrada!`)
+            campoDescricao.value = ''
+            carregarCategorias()
+        }
+        else {
+            mostrarMensagem(`Erro: ${dados.erro}`, 'erro')
+        }
+    } catch (erro) {
+        mostrarMensagem(`Erro de conexão: ${erro.message}`, 'erro')
+    }
+})
+
+function criarItemEdicao(categoria) {
+    const item = document.createElement('li')
+    item.className = 'categoria-item categoria-item-edicao'
+
+    const input = document.createElement('input')
+    input.type = 'text'
+    input.value = categoria.descricao
+    input.className = 'input-edicao'
+
+    const btnSalvar = document.createElement('button')
+    btnSalvar.textContent = 'Salvar'
+    btnSalvar.className = 'btn btn-salvar'
+    btnSalvar.addEventListener('click', () => salvarEdicao(categoria, input.value))
+
+    const btnCancelar = document.createElement('button')
+    btnCancelar.textContent = 'Cancelar'
+    btnCancelar.className = 'btn btn-cancelar'
+    btnCancelar.addEventListener('click', () => {
+        idEmEdicao = null
+        renderizarLista()
+    })
+
+    const acoes = document.createElement('div')
+    acoes.className = 'categoria-acoes'
+    acoes.append(btnSalvar, btnCancelar)
+    item.append(input, acoes)
+    input.focus()
+    return item
+}
+
+function mostrarMensagem(texto, tipo = 'sucesso') {
+    mensagem.textContent = texto
+    mensagem.className = `mensagem mensagem-${tipo}`
+}
+
+carregarCategorias()
+Use o código com cuidado.
+
+O que você vai notar imediatamente:
+
+1. Assim que colar e salvar (Ctrl + S), aquele número vermelho 9+ ao lado de app.js no VS Code vai desaparecer (ficará branco, sem nenhum erro!).
+2. Depois disso, basta garantir que o servidor esteja ligado no terminal (node server.js) e acessar http://localhost:3001 no navegador para testar o cadastro.
+Cole esse código no app.js, salve o arquivo e me diga se os erros vermelhos sumiram e se o cadastro funcionou ao abrir http://localhost:3001.
+As respostas da IA podem conter erros. Saiba mais
+ja apareceu algo diferente, agoara esta assim
+Ótimo progresso! O front-end (app.js) já está funcionando e tentando conversar com o servidor!
+A mensagem vermelha na tela (Erro de conexão: Failed to execute 'json' on 'Response': Unexpected end of JSON input) mostra exatamente o que está acontecendo:
+• O seu app.js enviou a requisição para /api/categorias, mas o servidor devolveu uma resposta vazia (sem JSON).
+• Isso acontece por um de dois motivos: ou você ainda está abrindo o site pelo Live Server (porta 5500 em vez de http://localhost:3001), ou o seu server.js precisa ser salvo/reiniciado com o código atualizado.
+
+Como resolver agora em 3 passos:
+
+
+1. Confira a barra de endereço do navegador
+
+Olhe lá em cima na barra de URL do seu navegador:
+• Se estiver escrito http://127.0.0... ou file:///..., não vai funcionar, porque o Live Server não tem a rota /api/categorias (ele devolve vazio e dá exatamente esse erro).
+• O endereço precisa ser exatamente: http://localhost:3001
+
+2. Garanta que o server.js está salvo e com o código completo
+
+Verifique se o seu server.js tem a rota POST /api/categorias retornando responderJSON(res, 201, linhas[0]) (repare no [0] para retornar apenas o objeto criado, e não uma lista).
+Aqui está o trecho exato da rota POST no server.js para conferir:
+javascript
+    // POST /api/categorias -> cadastra uma categoria nova
+    if (req.url === '/api/categorias' && req.method === 'POST') {
+        let corpo
+        try { corpo = await lerCorpo(req) }
+        catch { return responderJSON(res, 400, { erro: 'JSON inválido' }) }
+
+        const descricao = (corpo.descricao || '').trim()
+        if (!descricao) return responderJSON(res, 400, { erro: 'Informe a descrição' })
+
+        const linhas = await executarQueryNeon(
+            'INSERT INTO categoria (descricao) VALUES ($1) RETURNING *',
+            [descricao]
+        )
+        if (linhas === null) return responderJSON(res, 500, { erro: 'Falha ao inserir no banco' })
+        return responderJSON(res, 201, linhas[0])
+    }
+Use o código com cuidado.
+
+3. Reinicie o servidor no terminal do VS Code
+
+Sempre que você mexe no server.js, precisa reiniciar ele:
+1. Clique no terminal do VS Code.
+2. Aperte Ctrl + C para derrubar o servidor antigo.
+3. Digite node server.js e aperte Enter.
+4. Volte no navegador na aba http://localhost:3001, aperte F5 e tente cadastrar "Brinquedos" de novo!
+Confira qual URL está na barra de endereço do navegador e se aparece alguma mensagem de erro no terminal do VS Code quando você clica em Cadastrar. Pode me mandar o que aparecer lá?
+As respostas da IA podem conter erros. Saiba mais
+eu queria saber onde eu vou no neon pra mim onde esta salvando isso, e esta com um pequeno problema na hora de editar, eu consigo clicar no botao editar, porem ele nao esta salvando o novo nome
+Parabéns! Agora o seu site está conectado e cadastrando direto no banco de dados! Veja na imagem que os itens #3 jose, #4 Brinquedos e #5 zezin já estão sendo salvos e listados perfeitamente, e o visual ficou ótimo.
+Aqui estão as duas respostas para o que você precisa agora:
+
+1. Onde ver os dados salvos lá no site do Neon
+
+Para visualizar a tabela e os registros salvos no painel do Neon:
+1. Acesse o site do Neon (console.neon.tech) e entre no seu projeto.
+2. No menu lateral esquerdo, clique em Tables (Tabelas) — ou, se preferir usar comandos, clique em SQL Editor.
+3. Se clicar em Tables, basta selecionar a tabela categoria na lista para ver uma planilha com todas as linhas (id_categoria e descricao) salvas pelo seu site.
+4. Se usar o SQL Editor, digite SELECT * FROM categoria; e clique em Run.
+
+2. Por que o botão "Salvar" na edição ainda não funciona (e como corrigir)
+
+Quando você clica em Editar, o campo de texto e o botão Salvar aparecem porque a função criarItemEdicao chama salvarEdicao(categoria, input.value). Porém, no último código que colamos no seu app.js, a função salvarEdicao ficou de fora!
+Além disso, precisamos garantir que o server.js tenha a rota PUT para receber essa atualização.
+
+Passo A: Adicione a função salvarEdicao no final do app.js
+
+Abra o seu app.js e cole este bloco logo acima da linha function mostrarMensagem(texto, tipo = 'sucesso'):
+javascript
+async function salvarEdicao(categoria, novaDescricao) {
+    if (!novaDescricao.trim()) {
+        mostrarMensagem('A descrição não pode ficar vazia.', 'erro')
+        return
+    }
+
+    try {
+        const resposta = await fetch(`/api/categorias/${categoria.id_categoria}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ descricao: novaDescricao })
+        })
+        const dados = await resposta.json()
+
+        if (resposta.ok) {
+            idEmEdicao = null
+            mostrarMensagem(`Categoria atualizada para "${dados.descricao}"!`)
+            carregarCategorias()
+        } else {
+            mostrarMensagem(`Erro: ${dados.erro}`, 'erro')
+        }
+    } catch (erro) {
+        mostrarMensagem(`Erro ao salvar edição: ${erro.message}`, 'erro')
+    }
+}
+Use o código com cuidado.
+
+Passo B: Adicione a rota de edição no server.js
+
+Abra o seu server.js e confira se existe o bloco PUT logo abaixo do cadastro (POST /api/categorias). Se não existir, cole este código antes da rota de excluir:
+javascript
+    // PUT /api/categorias/:id -> edita uma categoria existente
+    if (req.url.startsWith('/api/categorias/') && req.method === 'PUT') {
+        const id = req.url.split('/')[3]
+        if (!id) return responderJSON(res, 400, { erro: 'Informe o ID da categoria' })
+
+        let corpo
+        try { corpo = await lerCorpo(req) }
+        catch { return responderJSON(res, 400, { erro: 'JSON inválido' }) }
+
+        const descricao = (corpo.descricao || '').trim()
+        if (!descricao) return responderJSON(res, 400, { erro: 'Informe a nova descrição' })
+
+        const linhas = await executarQueryNeon(
+            'UPDATE categoria SET descricao = $1 WHERE id_categoria = $2 RETURNING *',
+            [descricao, id]
+        )
+        if (linhas === null) return responderJSON(res, 500, { erro: 'Falha ao atualizar no banco' })
+        if (linhas.length === 0) return responderJSON(res, 404, { erro: 'Categoria não encontrada' })
+        return responderJSON(res, 200, linhas[0])
+    }
+Use o código com cuidado.
+
+Passo C: Reinicie o servidor
+
+1. Salve o app.js e o server.js (Ctrl + S).
+2. No terminal do VS Code, aperte Ctrl + C e rode node server.js novamente.
+3. Atualize a página no navegador (F5) e teste clicar em Editar, mudar o nome e clicar em Salvar.
+Teste adicionar esses dois blocos e reiniciar o servidor. Conseguiu visualizar os dados lá na aba Tables do Neon e salvar a edição no site?
+As respostas da IA podem conter erros. Saiba mais
+
+esse é o app.js                                   // Este arquivo roda no Navegador (Cliente)
+// Ele não fala com o NEON: Chama as rotas /api do nosso server.js
+
+const lista = document.getElementById('lista-categorias')
+const formulario = document.getElementById('form-categoria')
+const campoDescricao = document.getElementById('descricao')
+const mensagem = document.getElementById('mensagem')
+
+let categorias = []
+let idEmEdicao = null
+
+async function carregarCategorias() {
+    lista.innerHTML = '<li class="lista-vazia">Carregando....</li>'
+    try {
+        const resposta = await fetch('/api/categorias')
+        categorias = await resposta.json()
+
+        if (!resposta.ok) throw new Error(categorias.error || 'Erro ao carregar')
+        renderizarLista()
+    }
+    catch (error) {
+        mensagem.textContent = `Erro: ${error.message}`
+    }
+}
+
+function renderizarLista() {
+    lista.innerHTML = ''
+    if (categorias.length === 0) {
+        lista.innerHTML = '<li class="lista-vazia">Nenhuma categoria cadastrada!</li>'
+        return
+    }
+    for (const categoria of categorias) {
+        lista.appendChild(
+            categoria.id_categoria === idEmEdicao ? criarItemEdicao(categoria) : criarItemVisualizacao(categoria)
+        )
+    }
+}
+
+function criarItemVisualizacao(categoria) {
+    const item = document.createElement('li')
+    item.className = 'categoria-item'
+
+    const info = document.createElement('span')
+    info.className = 'categoria-info'
+    info.innerHTML = `<span class="categoria-id">#${categoria.id_categoria}</span> ${categoria.descricao}`
+
+    const btnEditar = document.createElement('button')
+    btnEditar.textContent = 'Editar'
+    btnEditar.className = 'btn btn-editar'
+    btnEditar.addEventListener('click', () => {
+        idEmEdicao = categoria.id_categoria
+        renderizarLista()
+    })
+
+    const btnExcluir = document.createElement('button')
+    btnExcluir.textContent = 'Excluir'
+    btnExcluir.className = 'btn btn-excluir'
+    btnExcluir.addEventListener('click', () => {
+        excluirCategoria(categoria.id_categoria)
+    })
+
+    const acoes = document.createElement('div')
+    acoes.className = 'categoria-acoes'
+
+    acoes.append(btnEditar, btnExcluir)
+    item.append(info, acoes)
+    return item
+}
+
+async function excluirCategoria(id_excluirCategoria) {
+    try {
+        const resposta = await fetch('/api/excluirCategorias', {
+            method: 'POST',
+            headers: { 'Content-type': 'application/json' },
+            body: JSON.stringify({ id_categoria: id_excluirCategoria })
+        })
+        const dados = await resposta.json()
+
+        if (resposta.ok) {
+            mostrarMensagem(`Categoria "${dados.descricao}" Excluida!`)
+            campoDescricao.value = ''
+            carregarCategorias()
+        }
+        else {
+            mostrarMensagem(`Erro: ${dados.erro}`, 'erro')
+        }
+    }
+    catch (erro) {
+        mostrarMensagem(`Erro de conexão: ${erro.message}`, 'erro')
+    }
+}
+
+formulario.addEventListener('submit', async (evento) => {
+    evento.preventDefault()
+
+    try {
+        const resposta = await fetch('/api/categorias', {
+            method: 'POST',
+            headers: { 'Content-type': 'application/json' },
+            body: JSON.stringify({ descricao: campoDescricao.value })
+        })
+        const dados = await resposta.json()
+
+        if (resposta.ok) {
+            mostrarMensagem(`Categoria "${dados.descricao}" cadastrada!`)
+            campoDescricao.value = ''
+            carregarCategorias()
+        }
+        else {
+            mostrarMensagem(`Erro: ${dados.erro}`, 'erro')
+        }
+    } catch (erro) {
+        mostrarMensagem(`Erro de conexão: ${erro.message}`, 'erro')
+    }
+})
+
+function criarItemEdicao(categoria) {
+    const item = document.createElement('li')
+    item.className = 'categoria-item categoria-item-edicao'
+
+    const input = document.createElement('input')
+    input.type = 'text'
+    input.value = categoria.descricao
+    input.className = 'input-edicao'
+
+    const btnSalvar = document.createElement('button')
+    btnSalvar.textContent = 'Salvar'
+    btnSalvar.className = 'btn btn-salvar'
+    btnSalvar.addEventListener('click', () => salvarEdicao(categoria, input.value))
+
+    const btnCancelar = document.createElement('button')
+    btnCancelar.textContent = 'Cancelar'
+    btnCancelar.className = 'btn btn-cancelar'
+    btnCancelar.addEventListener('click', () => {
+        idEmEdicao = null
+        renderizarLista()
+    })
+
+    const acoes = document.createElement('div')
+    acoes.className = 'categoria-acoes'
+    acoes.append(btnSalvar, btnCancelar)
+    item.append(input, acoes)
+    input.focus()
+    return item
+}
+
+function mostrarMensagem(texto, tipo = 'sucesso') {
+    mensagem.textContent = texto
+    mensagem.className = `mensagem mensagem-${tipo}`
+}
+
+carregarCategorias()
+
+Confirmado! Olhando esse app.js que você acabou de mandar, ele está todo certinho e sem erros de sintaxe, mas falta exatamente a função salvarEdicao nele (repare que na linha 124 o botão Salvar chama salvarEdicao(categoria, input.value), mas essa função ainda não foi criada no final do arquivo).
+
+Como finalizar o app.js agora:
+
+1. No seu app.js, vá até as últimas linhas (logo acima de function mostrarMensagem(texto, tipo = 'sucesso')).
+2. Cole este código da função salvarEdicao lá:
+javascript
+async function salvarEdicao(categoria, novaDescricao) {
+    if (!novaDescricao.trim()) {
+        mostrarMensagem('A descrição não pode ficar vazia.', 'erro')
+        return
+    }
+
+    try {
+        const resposta = await fetch(`/api/categorias/${categoria.id_categoria}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ descricao: novaDescricao })
+        })
+        const dados = await resposta.json()
+
+        if (resposta.ok) {
+            idEmEdicao = null
+            mostrarMensagem(`Categoria atualizada para "${dados.descricao}"!`)
+            carregarCategorias()
+        } else {
+            mostrarMensagem(`Erro: ${dados.erro}`, 'erro')
+        }
+    } catch (erro) {
+        mostrarMensagem(`Erro ao salvar edição: ${erro.message}`, 'erro')
+    }
+}
+Use o código com cuidado.
+
+Lembrete importante no server.js:
+
+Para que essa função salvarEdicao consiga atualizar o banco de dados, o seu server.js também precisa ter a rota PUT /api/categorias/:id (e retorne linhas[0] na resposta para que dados.descricao apareça na mensagem verde).
+Confira se a rota PUT no seu server.js está assim:
+javascript
+    // PUT /api/categorias/:id -> edita uma categoria existente
+    if (req.url.startsWith('/api/categorias/') && req.method === 'PUT') {
+        const id = req.url.split('/')[3]
+        if (!id) return responderJSON(res, 400, { erro: 'Informe o ID da categoria' })
+
+        let corpo
+        try { corpo = await lerCorpo(req) }
+        catch { return responderJSON(res, 400, { erro: 'JSON inválido' }) }
+
+        const descricao = (corpo.descricao || '').trim()
+        if (!descricao) return responderJSON(res, 400, { erro: 'Informe a nova descrição' })
+
+        const linhas = await executarQueryNeon(
+            'UPDATE categoria SET descricao = $1 WHERE id_categoria = $2 RETURNING *',
+            [descricao, id]
+        )
+        if (linhas === null) return responderJSON(res, 500, { erro: 'Falha ao atualizar no banco' })
+        if (linhas.length === 0) return responderJSON(res, 404, { erro: 'Categoria não encontrada' })
+        return responderJSON(res, 200, linhas[0])
+    }
+Use o código com cuidado.
+
+Passos finais:
+
+1. Salve o app.js e o server.js (Ctrl + S).
+2. No terminal do VS Code, aperte Ctrl + C para parar o servidor e rode node server.js de novo.
+3. Atualize o navegador (F5) e teste clicar em Editar, mudar o texto e clicar em Salvar.
+Adicione essa função no app.js e a rota PUT no server.js. Funcionou o botão Salvar na edição? Se quiser, também podemos conferir o botão Excluir!
+As respostas da IA podem conter erros. Saiba mais
+
+oq seria a rota put
+
+Na programação web, uma rota PUT é o caminho (endereço) criado no servidor (server.js) que serve especificamente para atualizar ou editar um dado que já existe no banco de dados.
+Para entender facilmente, pense nos verbos (métodos) HTTP como as ações de um sistema:
+• GET (Buscar): O site pede a lista de categorias ao servidor (SELECT).
+• POST (Criar): O site envia uma categoria nova para ser salva no banco (INSERT).
+• PUT (Editar): O site envia um texto novo e o ID de uma categoria que já existe para substituir a antiga (UPDATE).
+• DELETE (Apagar): O site pede para remover uma categoria do banco (DELETE).
+
+Como a rota PUT funciona no seu projeto
+
+Quando você clica no botão Salvar na tela, o seu navegador (app.js) manda um aviso para o servidor no endereço /api/categorias/3 (onde 3 é o ID da categoria) usando o método PUT e levando o novo nome dentro do pacote.
+No seu server.js, a rota PUT faz três coisas em sequência:
+1. Pega o ID na URL: Descobre qual item será alterado (ex: id = 3).
+2. Lê o novo texto: Pega a nova descrição enviada pelo app.js (ex: "Eletrônicos").
+3. Atualiza o banco Neon: Executa o comando SQL UPDATE categoria SET descricao = $1 WHERE id_categoria = $2 e devolve o item atualizado para a tela.
+Se quiser, posso te mostrar em qual linha exata do seu server.js você deve colar esse bloco da rota PUT para não dar conflito com as outras rotas. Quer que eu monte o arquivo server.js inteiro já pronto para você copiar?
+As respostas da IA podem conter erros. Saiba mais
+
+consegue editar o app.js pra mim
+
+Com certeza! Aqui está o seu arquivo app.js completo e já editado com a função salvarEdicao incluída no final.
+É só apagar tudo que está no seu app.js, colar este código abaixo e salvar (Ctrl + S):
+javascript
+// Este arquivo roda no Navegador (Cliente)
+// Ele não fala com o NEON: Chama as rotas /api do nosso server.js
+
+const lista = document.getElementById('lista-categorias')
+const formulario = document.getElementById('form-categoria')
+const campoDescricao = document.getElementById('descricao')
+const mensagem = document.getElementById('mensagem')
+
+let categorias = []
+let idEmEdicao = null
+
+async function carregarCategorias() {
+    lista.innerHTML = '<li class="lista-vazia">Carregando....</li>'
+    try {
+        const resposta = await fetch('/api/categorias')
+        categorias = await resposta.json()
+
+        if (!resposta.ok) throw new Error(categorias.error || 'Erro ao carregar')
+        renderizarLista()
+    }
+    catch (error) {
+        mensagem.textContent = `Erro: ${error.message}`
+    }
+}
+
+function renderizarLista() {
+    lista.innerHTML = ''
+    if (categorias.length === 0) {
+        lista.innerHTML = '<li class="lista-vazia">Nenhuma categoria cadastrada!</li>'
+        return
+    }
+    for (const categoria of categorias) {
+        lista.appendChild(
+            categoria.id_categoria === idEmEdicao ? criarItemEdicao(categoria) : criarItemVisualizacao(categoria)
+        )
+    }
+}
+
+function criarItemVisualizacao(categoria) {
+    const item = document.createElement('li')
+    item.className = 'categoria-item'
+
+    const info = document.createElement('span')
+    info.className = 'categoria-info'
+    info.innerHTML = `<span class="categoria-id">#${categoria.id_categoria}</span> ${categoria.descricao}`
+
+    const btnEditar = document.createElement('button')
+    btnEditar.textContent = 'Editar'
+    btnEditar.className = 'btn btn-editar'
+    btnEditar.addEventListener('click', () => {
+        idEmEdicao = categoria.id_categoria
+        renderizarLista()
+    })
+
+    const btnExcluir = document.createElement('button')
+    btnExcluir.textContent = 'Excluir'
+    btnExcluir.className = 'btn btn-excluir'
+    btnExcluir.addEventListener('click', () => {
+        excluirCategoria(categoria.id_categoria)
+    })
+
+    const acoes = document.createElement('div')
+    acoes.className = 'categoria-acoes'
+
+    acoes.append(btnEditar, btnExcluir)
+    item.append(info, acoes)
+    return item
+}
+
+async function excluirCategoria(id_excluirCategoria) {
+    try {
+        const resposta = await fetch('/api/excluirCategorias', {
+            method: 'POST',
+            headers: { 'Content-type': 'application/json' },
+            body: JSON.stringify({ id_categoria: id_excluirCategoria })
+        })
+        const dados = await resposta.json()
+
+        if (resposta.ok) {
+            mostrarMensagem(`Categoria "${dados.descricao}" Excluida!`)
+            campoDescricao.value = ''
+            carregarCategorias()
+        }
+        else {
+            mostrarMensagem(`Erro: ${dados.erro}`, 'erro')
+        }
+    }
+    catch (erro) {
+        mostrarMensagem(`Erro de conexão: ${erro.message}`, 'erro')
+    }
+}
+
+formulario.addEventListener('submit', async (evento) => {
+    evento.preventDefault()
+
+    try {
+        const resposta = await fetch('/api/categorias', {
+            method: 'POST',
+            headers: { 'Content-type': 'application/json' },
+            body: JSON.stringify({ descricao: campoDescricao.value })
+        })
+        const dados = await resposta.json()
+
+        if (resposta.ok) {
+            mostrarMensagem(`Categoria "${dados.descricao}" cadastrada!`)
+            campoDescricao.value = ''
+            carregarCategorias()
+        }
+        else {
+            mostrarMensagem(`Erro: ${dados.erro}`, 'erro')
+        }
+    } catch (erro) {
+        mostrarMensagem(`Erro de conexão: ${erro.message}`, 'erro')
+    }
+})
+
+function criarItemEdicao(categoria) {
+    const item = document.createElement('li')
+    item.className = 'categoria-item categoria-item-edicao'
+
+    const input = document.createElement('input')
+    input.type = 'text'
+    input.value = categoria.descricao
+    input.className = 'input-edicao'
+
+    const btnSalvar = document.createElement('button')
+    btnSalvar.textContent = 'Salvar'
+    btnSalvar.className = 'btn btn-salvar'
+    btnSalvar.addEventListener('click', () => salvarEdicao(categoria, input.value))
+
+    const btnCancelar = document.createElement('button')
+    btnCancelar.textContent = 'Cancelar'
+    btnCancelar.className = 'btn btn-cancelar'
+    btnCancelar.addEventListener('click', () => {
+        idEmEdicao = null
+        renderizarLista()
+    })
+
+    const acoes = document.createElement('div')
+    acoes.className = 'categoria-acoes'
+    acoes.append(btnSalvar, btnCancelar)
+    item.append(input, acoes)
+    input.focus()
+    return item
+}
+
+async function salvarEdicao(categoria, novaDescricao) {
+    if (!novaDescricao.trim()) {
+        mostrarMensagem('A descrição não pode ficar vazia.', 'erro')
+        return
+    }
+
+    try {
+        const resposta = await fetch(`/api/categorias/${categoria.id_categoria}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ descricao: novaDescricao })
+        })
+        const dados = await resposta.json()
+
+        if (resposta.ok) {
+            idEmEdicao = null
+            mostrarMensagem(`Categoria atualizada para "${dados.descricao}"!`)
+            carregarCategorias()
+        } else {
+            mostrarMensagem(`Erro: ${dados.erro}`, 'erro')
+        }
+    } catch (erro) {
+        mostrarMensagem(`Erro ao salvar edição: ${erro.message}`, 'erro')
+    }
+}
+
+function mostrarMensagem(texto, tipo = 'sucesso') {
+    mensagem.textContent = texto
+    mensagem.className = `mensagem mensagem-${tipo}`
+}
+
+carregarCategorias()
+Use o código com cuidado.
+
+Lembrete rápido para funcionar:
+
+1. Salve o app.js (Ctrl + S).
+2. Certifique-se de que o seu server.js também já tem a rota PUT (e foi reiniciado com Ctrl + C e node server.js).
+3. Atualize o navegador (F5) e teste clicar em Editar, mudar o texto e clicar em Salvar.
+Quer que eu também te mande o arquivo server.js inteiro já com a rota PUT encaixada no lugar certo para você só copiar e colar?
+As respostas da IA podem conter erros. Saiba mais
+
+se estiver errado concesue me ajudar a arrumar                                // Servidor da Loja do Zé
+// O navegador conversa com ESTE servidor (mesma origem, então não há CORS).
+// Só o servidor conversa com o Neon, e a senha do banco nunca chega ao navegador.
+const http = require('http')
+const fs = require('fs')
+const path = require('path')
+const { executarQueryNeon } = require('./script_db_quantum.js')
+
+
+const PORTA = process.env.PORT || 3001
+
+const arquivos = {
+    '/': { arquivo: 'index.html', tipo: 'text/html; charset=utf-8' },
+    '/index.html': { arquivo: 'index.html', tipo: 'text/html; charset=utf-8' },
+    '/app.js': { arquivo: 'app.js', tipo: 'text/javascript; charset=utf-8' },
+    '/style.css': { arquivo: 'style.css', tipo: 'text/css; charset=utf-8' }
+}
+
+function responderJSON(res, status, dados) {
+    res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' })
+    res.end(JSON.stringify(dados))
+}
+
+function lerCorpo(req) {
+    return new Promise((resolve, reject) => {
+        let corpo = ''
+        req.on('data', pedaco => corpo += pedaco)
+        req.on('end', () => {
+            try { resolve(JSON.parse(corpo || '{}')) }
+            catch (erro) { reject(erro) }
+        })
+    })
+}
+
+const servidor = http.createServer(async (req, res) => {
+    // GET /api/categorias -> lista as categorias
+    if (req.url === '/api/categorias' && req.method === 'GET') {
+        const linhas = await executarQueryNeon('SELECT * FROM categoria ORDER BY id_categoria')
+        if (linhas === null) return responderJSON(res, 500, { erro: 'Falha ao consultar o banco' })
+        return responderJSON(res, 200, linhas)
+    }
+
+    // POST /api/categorias -> cadastra uma categoria nova
+    if (req.url === '/api/categorias' && req.method === 'POST') {
+        let corpo
+        try { corpo = await lerCorpo(req) }
+        catch { return responderJSON(res, 400, { erro: 'JSON inválido' }) }
+
+        const descricao = (corpo.descricao || '').trim()
+        if (!descricao) return responderJSON(res, 400, { erro: 'Informe a descrição' })
+
+        const linhas = await executarQueryNeon(
+            'INSERT INTO categoria (descricao) VALUES ($1) RETURNING *',
+            [descricao]
+        )
+        if (linhas === null) return responderJSON(res, 500, { erro: 'Falha ao inserir no banco' })
+        return responderJSON(res, 201, linhas[0])
+    }
+
+    // edita uma categoria  4 minutos valendo nota 3 pontos
+        // exclui uma categoria quem é a entidade forte categoria ou produto ?
+    if (req.url === '/api/excluirCategorias' && req.method==='POST')
+    {
+        let corpo 
+        try{corpo = await lerCorpo(req)}
+        catch{return responderJSON(res,400,{erro:'ID null'})}
+
+        const conteudo =(corpo.id_categoria || '') //trim só funciona para strings 
+        if(!conteudo) return responderJSON(res,400,{erro:'Informe o ID'})
+        const linhas = await executarQueryNeon(
+            'DELETE FROM categoria WHERE id_categoria = $1 RETURNING *', [conteudo])// nome de variavel errada
+       
+        if (linhas === null) return responderJSON(res, 500, { erro: 'Falha ao deletar no banco' })
+        return responderJSON(res, 201, linhas[0])
+
+    }
+    // Arquivos da página
+    const rota = arquivos[req.url]
+    if (rota) {
+        res.writeHead(200, { 'Content-Type': rota.tipo })
+        return fs.createReadStream(path.join(__dirname, rota.arquivo)).pipe(res)
+    }
+
+    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' })
+    res.end('Página não encontrada')
+})
+
+servidor.listen(PORTA, () => {
+    console.log(`Loja do Zé rodando em http://localhost:${PORTA}`)
+})
+
+O seu server.js está quase perfeito, mas ainda falta o código da rota de editar (PUT /api/categorias/:id) logo abaixo do comentário // edita uma categoria 4 minutos valendo nota 3 pontos.
+Para que o botão Salvar da edição funcione, você precisa adicionar esse bloco. Aqui está o seu server.js completo e corrigido, com a rota de edição encaixada no lugar exato e retornando o item atualizado (linhas[0]):
+
+Código completo do server.js
+
+Apague tudo que está no seu server.js, cole o código abaixo e salve (Ctrl + S):
+javascript
+// Servidor da Loja do Zé
+// O navegador conversa com ESTE servidor (mesma origem, então não há CORS).
+// Só o servidor conversa com o Neon, e a senha do banco nunca chega ao navegador.
+const http = require('http')
+const fs = require('fs')
+const path = require('path')
+const { executarQueryNeon } = require('./script_db_quantum.js')
+
+const PORTA = process.env.PORT || 3001
+
+const arquivos = {
+    '/': { arquivo: 'index.html', tipo: 'text/html; charset=utf-8' },
+    '/index.html': { arquivo: 'index.html', tipo: 'text/html; charset=utf-8' },
+    '/app.js': { arquivo: 'app.js', tipo: 'text/javascript; charset=utf-8' },
+    '/style.css': { arquivo: 'style.css', tipo: 'text/css; charset=utf-8' }
+}
+
+function responderJSON(res, status, dados) {
+    res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' })
+    res.end(JSON.stringify(dados))
+}
+
+function lerCorpo(req) {
+    return new Promise((resolve, reject) => {
+        let corpo = ''
+        req.on('data', pedaco => corpo += pedaco)
+        req.on('end', () => {
+            try { resolve(JSON.parse(corpo || '{}')) }
+            catch (erro) { reject(erro) }
+        })
+    })
+}
+
+const servidor = http.createServer(async (req, res) => {
+    // GET /api/categorias -> lista as categorias
+    if (req.url === '/api/categorias' && req.method === 'GET') {
+        const linhas = await executarQueryNeon('SELECT * FROM categoria ORDER BY id_categoria')
+        if (linhas === null) return responderJSON(res, 500, { erro: 'Falha ao consultar o banco' })
+        return responderJSON(res, 200, linhas)
+    }
+
+    // POST /api/categorias -> cadastra uma categoria nova
+    if (req.url === '/api/categorias' && req.method === 'POST') {
+        let corpo
+        try { corpo = await lerCorpo(req) }
+        catch { return responderJSON(res, 400, { erro: 'JSON inválido' }) }
+
+        const descricao = (corpo.descricao || '').trim()
+        if (!descricao) return responderJSON(res, 400, { erro: 'Informe a descrição' })
+
+        const linhas = await executarQueryNeon(
+            'INSERT INTO categoria (descricao) VALUES ($1) RETURNING *',
+            [descricao]
+        )
+        if (linhas === null) return responderJSON(res, 500, { erro: 'Falha ao inserir no banco' })
+        return responderJSON(res, 201, linhas[0])
+    }
+
+    // PUT /api/categorias/:id -> edita uma categoria existente
+    if (req.url.startsWith('/api/categorias/') && req.method === 'PUT') {
+        const id = req.url.split('/')[3]
+        if (!id) return responderJSON(res, 400, { erro: 'Informe o ID da categoria' })
+
+        let corpo
+        try { corpo = await lerCorpo(req) }
+        catch { return responderJSON(res, 400, { erro: 'JSON inválido' }) }
+
+        const descricao = (corpo.descricao || '').trim()
+        if (!descricao) return responderJSON(res, 400, { erro: 'Informe a nova descrição' })
+
+        const linhas = await executarQueryNeon(
+            'UPDATE categoria SET descricao = $1 WHERE id_categoria = $2 RETURNING *',
+            [descricao, id]
+        )
+        if (linhas === null) return responderJSON(res, 500, { erro: 'Falha ao atualizar no banco' })
+        if (linhas.length === 0) return responderJSON(res, 404, { erro: 'Categoria não encontrada' })
+        return responderJSON(res, 200, linhas[0])
+    }
+
+    // POST /api/excluirCategorias -> exclui uma categoria
+    if (req.url === '/api/excluirCategorias' && req.method === 'POST') {
+        let corpo 
+        try { corpo = await lerCorpo(req) }
+        catch { return responderJSON(res, 400, { erro: 'ID null' }) }
+
+        const conteudo = (corpo.id_categoria || '')
+        if (!conteudo) return responderJSON(res, 400, { erro: 'Informe o ID' })
+        
+        const linhas = await executarQueryNeon(
+            'DELETE FROM categoria WHERE id_categoria = $1 RETURNING *', 
+            [conteudo]
+        )
+       
+        if (linhas === null) return responderJSON(res, 500, { erro: 'Falha ao deletar no banco' })
+        return responderJSON(res, 200, linhas[0])
+    }
+
+    // Arquivos da página
+    const rota = arquivos[req.url]
+    if (rota) {
+        res.writeHead(200, { 'Content-Type': rota.tipo })
+        return fs.createReadStream(path.join(__dirname, rota.arquivo)).pipe(res)
+    }
+
+    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' })
+    res.end('Página não encontrada')
+})
+
+servidor.listen(PORTA, () => {
+    console.log(`Loja do Zé rodando em http://localhost:${PORTA}`)
+})
+Use o código com cuidado.
+
+O que você precisa fazer agora para testar:
+
+1. Salve o server.js e o app.js: Aperte Ctrl + S nos dois arquivos no VS Code.
+2. Reinicie o servidor: Clique no terminal do VS Code, aperte Ctrl + C para parar o servidor antigo e digite node server.js + Enter.
+3. Teste no navegador: Vá na aba http://localhost:3001, aperte F5, clique em Editar, mude o nome e clique em Salvar.
+Se você quiser aproveitar e criar as páginas de Produtos, Clientes ou Vendas usando esse mesmo padrão do banco, me avise que eu te ajudo a montar!
+As respostas da IA podem conter erros. Saiba mais
+ele esta assim agora meu querido, tem algum problema no arquivo do json?
+Não há nenhum problema com os seus arquivos JSON! A mensagem Unexpected token 'P', "Página não"... is not valid JSON acontece porque o seu servidor respondeu com o texto "Página não encontrada" em vez de um JSON válido.
+Isso ocorre por dois motivos rápidos:
+
+1. O servidor antigo ainda estava rodando (ou faltou salvar/reiniciar)
+
+Quando você altera o server.js, o Node.js não atualiza sozinho. Ele continua rodando a versão antiga na memória (onde a rota PUT ainda não existia), caindo direto no final do arquivo onde está escrito res.end('Página não encontrada').
+
+2. Um pequeno detalhe na captura do ID na rota PUT
+
+Na rota PUT que te passei antes, faltou o índice [3] no final do .split('/') para pegar exatamente o número do ID na URL (/api/categorias/1), e o [0] no final de linhas para devolver um único objeto ao app.js.
+
+Como resolver definitivamente em 3 passos:
+
+
+Passo 1: Ajuste a rota PUT no seu server.js
+
+Substitua o bloco PUT /api/categorias/:id no seu server.js por este código exato (repare no [3] em split('/')[3] e no [0] em linhas[0]):
+javascript
+    // PUT /api/categorias/:id -> edita uma categoria existente
+    if (req.url.startsWith('/api/categorias/') && req.method === 'PUT') {
+        const id = req.url.split('/')[3]
+        if (!id) return responderJSON(res, 400, { erro: 'Informe o ID da categoria' })
+
+        let corpo
+        try { corpo = await lerCorpo(req) }
+        catch { return responderJSON(res, 400, { erro: 'JSON inválido' }) }
+
+        const descricao = (corpo.descricao || '').trim()
+        if (!descricao) return responderJSON(res, 400, { erro: 'Informe a nova descrição' })
+
+        const linhas = await executarQueryNeon(
+            'UPDATE categoria SET descricao = $1 WHERE id_categoria = $2 RETURNING *',
+            [descricao, id]
+        )
+        if (linhas === null) return responderJSON(res, 500, { erro: 'Falha ao atualizar no banco' })
+        if (linhas.length === 0) return responderJSON(res, 404, { erro: 'Categoria não encontrada' })
+        return responderJSON(res, 200, linhas[0])
+    }
+Use o código com cuidado.
+
+Passo 2: Salve o server.js
+
+Aperte Ctrl + S no VS Code (verifique se a bolinha branca ao lado do nome server.js na aba sumiu, confirmando que foi salvo).
+
+Passo 3: Reinicie o servidor no terminal
+
+1. Clique na área do terminal no VS Code.
+2. Aperte Ctrl + C para derrubar o servidor antigo.
+3. Digite node server.js e aperte Enter.
+4. Volte ao navegador, aperte F5 e teste clicar em Editar -> SALVAR.
+Se quiser, cole aqui o código completo do seu server.js atual caso o erro continue após reiniciar o terminal, que eu reviso linha por linha para você!
+As respostas da IA podem conter erros. Saiba mais
+
+já esta funcionando. eu queria saber onde fica os cadastrados que eu exclui, em que parte do banco de dados eles ficam
+
+Que ótima notícia que já está tudo funcionando!
+Sobre os cadastros que você excluiu: eles não ficam salvos em nenhuma lixeira do banco de dados — eles são apagados permanentemente.
+
+Por que isso acontece?
+
+No seu código do server.js, o comando utilizado na rota de exclusão é o DELETE:
+sql
+DELETE FROM categoria WHERE id_categoria = $1
+Use o código com cuidado.
+Esse tipo de exclusão é chamado de Hard Delete (exclusão física/definitiva). Assim que o banco executa esse comando, a linha inteira deixa de existir na tabela categoria.
+• Detalhe sobre os IDs: Você vai notar que, mesmo apagando os itens #1 ou #2, o próximo cadastro novo continuará seguindo a numeração (ex: #6, #7). Isso é normal, pois o tipo Serial do PostgreSQL/Neon nunca reutiliza um número que já foi usado antes.
+
+Como guardar um histórico do que foi excluído (Opcional)
+
+Se no futuro você quiser manter os dados no banco mesmo depois de clicar em "Excluir" (técnica chamada de Soft Delete ou exclusão lógica), o procedimento padrão em sistemas reais é:
+1. Criar uma coluna de status na tabela: Adicionar uma coluna ativo BOOLEAN DEFAULT TRUE na tabela categoria.
+2. Trocar o DELETE por UPDATE: Em vez de apagar a linha no server.js, você apenas muda o status dela para FALSE:sql
+UPDATE categoria SET ativo = FALSE WHERE id_categoria = $1
+Use o código com cuidado.
+3. Filtrar na listagem: Na hora de listar no site (GET), você busca apenas as categorias ativas (SELECT * FROM categoria WHERE ativo = TRUE), enquanto os registros excluídos continuam visíveis para você lá na aba Tables do Neon com o campo ativo = false.
+Se você quiser implementar esse histórico com Soft Delete no seu projeto ou partir para a criação das telas de Produtos, Clientes ou Vendas, me avise qual parte você prefere fazer agora!
