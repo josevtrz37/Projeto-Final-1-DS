@@ -106,6 +106,10 @@ const servidor = http.createServer(async (req, res) => {
     res.end('Página não encontrada')
 })
 
-servidor.listen(PORTA, () => {
-    console.log(`Loja do Zé rodando em http://localhost:${PORTA}`)
-})
+module.exports = servidor
+
+if (require.main === module) {
+    servidor.listen(PORTA, () => {
+        console.log(`Loja do Zé rodando em http://localhost:${PORTA}`)
+    })
+}
